@@ -45,25 +45,23 @@ class DAQ_Move_Conex(DAQ_Move_base):
                         
                         ]}]+comon_parameters
 
-
-
-    def __init__(self,parent=None,params_state=None):
-        super().__init__(parent,params_state)
+    def __init__(self, parent=None, params_state=None):
+        super().__init__(parent, params_state)
         self.settings.child(('epsilon')).setValue(0.0001)
 
-        #to be adjusted on the different computers
+        # to be adjusted on the different computers
         try:
             sys.path.append(self.settings.child(('conex_lib')).value())
             clr.AddReference("ConexAGAPCmdLib")
             import Newport.ConexAGAPCmdLib as Conexcmd
-            self.controller=Conexcmd.ConexAGAPCmds()
-            self.settings.child('bounds','is_bounds').setValue(True)
-            self.settings.child('bounds','min_bound').setValue(-0.02)
-            self.settings.child('bounds','max_bound').setValue(0.02)
+            self.controller = Conexcmd.ConexAGAPCmds()
+            self.settings.child('bounds', 'is_bounds').setValue(True)
+            self.settings.child('bounds', 'min_bound').setValue(-0.02)
+            self.settings.child('bounds', 'max_bound').setValue(0.02)
 
         except Exception as e:
-            self.emit_status(ThreadCommand("Update_Status",[getLineInfo()+ str(e)]))
-            raise Exception(getLineInfo()+ str(e))
+            self.emit_status(ThreadCommand("Update_Status", [getLineInfo() + str(e)]))
+            raise Exception(getLineInfo() + str(e))
 
 
     def commit_settings(self,param):
