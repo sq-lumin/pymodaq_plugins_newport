@@ -1,11 +1,31 @@
-# PyMoDAQ Plugins
+pymodaq_plugins_newport (Newport Instruments)
+#############################################
 
-PyMoDAQ, Modular Data Acquisition with Python, is a set of **python** modules used to perform automated measurements. 
+.. image:: https://img.shields.io/pypi/v/pymodaq_plugins_newport.svg
+   :target: https://pypi.org/project/pymodaq_plugins_newport/
+   :alt: Latest Version
 
-This repository contains various hardware plugins compatible with PyMoDAQ
+.. image:: https://readthedocs.org/projects/pymodaq/badge/?version=latest
+   :target: https://pymodaq.readthedocs.io/en/stable/?badge=latest
+   :alt: Documentation Status
 
-For an exhaustive list of the available plugins, see https://docs.google.com/spreadsheets/d/1wfMfvLwTitZd2R2m1O5i6wVEaX1lJBahP2HUbxVdidg
+.. image:: https://github.com/CEMES-CNRS/pymodaq_plugins_newport/workflows/Upload%20Python%20Package/badge.svg
+    :target: https://github.com/CEMES-CNRS/pymodaq_plugins_newport
 
-GitHub repo: https://github.com/CEMES-CNRS
+PyMoDAQ plugin for instruments from Newport (Conex, ESP100,...)
 
-Documentation: http://pymodaq.cnrs.fr/
+
+Authors
+=======
+
+* Sebastien J. Weber
+
+Instruments
+===========
+Below is the list of instruments included in this plugin
+
+Actuators
++++++++++
+
+* **Conex**: Piezo actuators from the CONEX-AGAP series"
+* **Newport_ESP100**: ESP100 motion controllers
