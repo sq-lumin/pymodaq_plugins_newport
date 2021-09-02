@@ -147,12 +147,13 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         -------
         float: The position obtained after scaling conversion.
         """
-        axis_number = self.settings.child('axis').value()
-        position = self.controller.axis[axis_number].number_of_steps
-        position = self.get_position_with_scaling(position)
-        self.emit_status(ThreadCommand('check_position', [position]))
-
-        return position
+        # axis_number = self.settings.child('axis').value()
+        # position = self.controller.axis[axis_number].number_of_steps
+        # position = self.get_position_with_scaling(position)
+        # self.emit_status(ThreadCommand('check_position', [position]))
+        #
+        # return position
+        pass
 
     def move_Abs(self, position):
         """
@@ -185,9 +186,9 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         # We do not use the move_relative command from the library since it raises an
         # error.
         order = str(axis_number) + "PR" + str(int(relative_move))
-        self.controller.ag_query(order)
+        self.controller.ag_sendcmd(order)
 
-        self.poll_moving()
+        # self.poll_moving()
 
     def move_Home(self):
         """
