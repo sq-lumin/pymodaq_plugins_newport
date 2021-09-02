@@ -47,7 +47,9 @@ install the library from git (not with pip), as it is explained in this page:
 https://github.com/Galvant/InstrumentKit
 
 $ git clone git@github.com:Galvant/InstrumentKit.git
+
 $ cd InstrumentKit
+
 $ python setup.py install
 
 This last command should be executed in the python environment where you installed pymodaq.
