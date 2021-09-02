@@ -51,6 +51,10 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
                   'name': 'axis',
                   'type': 'list',
                   'values': axis_names},
+                 {'title': 'Sleep time (s):',
+                  'name': 'sleep_time',
+                  'type': 'float',
+                  'value': 0.25},
                  {'title': 'MultiAxes:',
                   'name': 'multiaxes',
                   'type': 'group',
@@ -76,8 +80,8 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
 
         super().__init__(parent, params_state)
         self.controller = None
-        # we tolerate an error of 2 steps on the target position
-        self.settings.child('epsilon').setValue(2)
+        # we do not poll the moving since we consider an actuator without encoder
+        # self.settings.child('epsilon').setValue(1)
 
     def ini_stage(self, controller=None):
         """
@@ -125,6 +129,11 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
             channel = self.settings.child('channel').value()
             order = "CC" + str(channel)
             self.controller.ag_query(order)
+
+            # Configure the sleep time which is a time delay in second after each order.
+            # The setter of the library does not work that is why we use this dirty way
+            # by calling directly a private attribute.
+            self.controller._sleep_time = self.settings.child('sleep_time').value()
 
             self.status.info = "Actuator initialized !"
             self.status.controller = self.controller
@@ -211,7 +220,10 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         """
         Called after a param_tree_changed signal from DAQ_Move_main.
         """
-        pass
+        if param.name() == "sleep_time":
+            self.controller._sleep_time = param.value()
+        else:
+            pass
 
     def close(self):
         """
