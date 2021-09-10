@@ -19,6 +19,13 @@ $ git clone git@github.com:Galvant/InstrumentKit.git
 $ cd InstrumentKit
 $ python setup.py install
 
+Troubleshooting
+---------------
+It happens that the plugin initialize correctly (green light in a daq_move) but still
+sending a move order will have no effect.
+Try to load the AGUC2 class and launch an order in an independent script and try again
+with pymodaq. We do not know why but it seems to solve the problem...
+
 """
 
 class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
