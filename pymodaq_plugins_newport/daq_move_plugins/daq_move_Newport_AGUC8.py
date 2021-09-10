@@ -135,7 +135,7 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
             # Select the good channel.
             channel = self.settings.child('channel').value()
             order = "CC" + str(channel)
-            self.controller.ag_query(order)
+            self.controller.ag_sendcmd(order)
 
             # Configure the sleep time which is a time delay in second after each order.
             # The setter of the library does not work that is why we use this dirty way
