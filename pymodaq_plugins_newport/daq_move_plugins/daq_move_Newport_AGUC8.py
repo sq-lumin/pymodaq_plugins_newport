@@ -1,5 +1,4 @@
-from pymodaq.daq_move.utility_classes import DAQ_Move_base
-from pymodaq.daq_move.utility_classes import comon_parameters
+from pymodaq.daq_move.utility_classes import DAQ_Move_base, comon_parameters, main
 from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo
 from easydict import EasyDict as edict
 from instruments.newport.agilis import AGUC2
@@ -45,38 +44,14 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
     port = 'COM6' if 'COM6' in ports else ports[0] if len(ports) > 0 else ''
 
     params = [
-                 {'title': 'COM Port:',
-                  'name': 'com_port',
-                  'type': 'list',
-                  'values': ports,
-                  'value': port},
-                 {'title': 'Channel:',
-                  'name': 'channel',
-                  'type': 'list',
-                  'values': channel_names},
-                 {'title': 'Axis:',
-                  'name': 'axis',
-                  'type': 'list',
-                  'values': axis_names},
-                 {'title': 'Sleep time (s):',
-                  'name': 'sleep_time',
-                  'type': 'float',
-                  'value': 0.25},
-                 {'title': 'MultiAxes:',
-                  'name': 'multiaxes',
-                  'type': 'group',
-                  'visible': is_multiaxes,
-                  'children': [
-                     {'title': 'is Multiaxes:',
-                      'name': 'ismultiaxes',
-                      'type': 'bool',
-                      'value': is_multiaxes,
-                      'default': False},
-                     {'title': 'Status:',
-                      'name': 'multi_status',
-                      'type': 'list',
-                      'value': 'Master',
-                      'values': ['Master', 'Slave']},
+                 {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'values': ports, 'value': port},
+                 {'title': 'Firmware:', 'name': 'firmware', 'type': 'str', 'value': ''},
+                 {'title': 'Channel:', 'name': 'channel', 'type': 'list', 'values': channel_names},
+                 {'title': 'Axis:', 'name': 'axis', 'type': 'list', 'values': axis_names},
+                 {'title': 'Sleep time (s):', 'name': 'sleep_time', 'type': 'float', 'value': 0.25},
+                 {'title': 'MultiAxes:', 'name': 'multiaxes', 'type': 'group', 'visible': is_multiaxes, 'children': [
+                     {'title': 'is Multiaxes:', 'name': 'ismultiaxes','type': 'bool', 'value': is_multiaxes},
+                     {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'values': ['Master', 'Slave']},
                   ]}
              ] + comon_parameters
 
@@ -87,6 +62,11 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
 
         super().__init__(parent, params_state)
         self.controller = None
+
+        self._abs_steps = 0  # will keep a trace of the incremental steps (just as if there was an encoder)
+        self.current_position = 0
+        self.target_position = 0
+
         # we do not poll the moving since we consider an actuator without encoder
         # self.settings.child('epsilon').setValue(1)
 
@@ -131,7 +111,8 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
                     port=self.settings.child('com_port').value(),
                     baud=921600
                 )
-
+            info = self.controller.firmware_version
+            self.settings.child('firmware').setValue(info)
             # Select the good channel.
             channel = self.settings.child('channel').value()
             order = "CC" + str(channel)
@@ -142,7 +123,7 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
             # by calling directly a private attribute.
             self.controller._sleep_time = self.settings.child('sleep_time').value()
 
-            self.status.info = "Actuator initialized !"
+            self.status.info = f"Actuator AGUC8 initialized on com port {self.settings.child('com_port').value()}"
             self.status.controller = self.controller
             self.status.initialized = True
 
@@ -163,27 +144,19 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         -------
         float: The position obtained after scaling conversion.
         """
-        # axis_number = self.settings.child('axis').value()
-        # position = self.controller.axis[axis_number].number_of_steps
-        # position = self.get_position_with_scaling(position)
-        # self.emit_status(ThreadCommand('check_position', [position]))
-        #
-        # return position
-        pass
+
+        return self.target_position
 
     def move_Abs(self, position):
         """
         Move the actuator to the absolute target defined by position.
-
-        This is not implemented since there is no encoder.
-
         Parameters
         ----------
         position: (flaot) value of the absolute target positioning
         """
-        self.emit_status(ThreadCommand(
-            'Update_Status', ['Absolute move not implemented !']))
-        pass
+        position = self.check_bound(position)
+        rel_position = position - self.current_position
+        self.move_Rel(rel_position)
 
     def move_Rel(self, relative_move):
         """
@@ -196,31 +169,38 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
             number of steps. It has to be converted to int since here the unit is in
             number of steps.
         """
-        axis_number = self.settings.child('axis').value()
         # the syntax of the order is given by Newport documentation Agilis Series
         # User’s Manual v2.2.x
         # We do not use the move_relative command from the library since it raises an
         # error.
+        relative_move = self.check_bound(self.current_position + relative_move) - self.current_position
+        self.target_position = relative_move + self.current_position
+
+        axis_number = self.settings.child('axis').value()
+
         order = str(axis_number) + "PR" + str(int(relative_move))
         self.controller.ag_sendcmd(order)
 
-        # self.poll_moving()
+        self.poll_moving()
+
 
     def move_Home(self):
         """
-        Not implemented since there is no reference mark.
+
         """
-        self.emit_status(ThreadCommand(
-            'Update_Status', ['Home move not implemented !']))
-        pass
+
+        self.current_position = 0.
+        self.target_position = 0.
+
+        self.poll_moving()
+
 
     def stop_motion(self):
         """
         Stop an ongoing move.
         Not implemented.
         """
-        self.emit_status(ThreadCommand(
-            'Update_Status', ['Stop action not implemented !']))
+
         pass
 
     def commit_settings(self, param):
@@ -229,8 +209,11 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         """
         if param.name() == "sleep_time":
             self.controller._sleep_time = param.value()
-        else:
-            pass
+        elif param.name() == 'channel':
+            self.controller.ag_sendcmd(f'CC{param.value()}')
+            channel = self.controller.ag_query('CC?')
+            param.setValue(int(channel[2:]))
+
 
     def close(self):
         """
@@ -240,26 +223,5 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         pass
 
 
-def main():
-    """
-    this method start a DAQ_Move object with this defined plugin as actuator
-    Returns
-    -------
-
-    """
-    import sys
-    from PyQt5 import QtWidgets
-    from pymodaq.daq_move.daq_move_main import DAQ_Move
-    from pathlib import Path
-    app = QtWidgets.QApplication(sys.argv)
-    Form = QtWidgets.QWidget()
-    prog = DAQ_Move(Form, title="Newport AGILIS",)
-    Form.show()
-    prog.actuator = Path(__file__).stem[9:]
-    prog.init()
-
-    sys.exit(app.exec_())
-
-
 if __name__ == '__main__':
-    main()
+    main(__file__)
