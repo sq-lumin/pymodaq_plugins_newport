@@ -31,7 +31,7 @@ with pymodaq. We do not know why but it seems to solve the problem...
 
 """
 
-class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
+class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
     """
     """
     _controller_units = 'step'
@@ -45,7 +45,7 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
     ports = []
     for k in infos.keys():
         ports.append(infos[k].alias)
-    port = 'COM6' if 'COM6' in ports else ports[0] if len(ports) > 0 else ''
+    port = 'COM9' if 'COM9' in ports else ports[0] if len(ports) > 0 else ''
 
     params = [
                  {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'values': ports, 'value': port},
@@ -115,12 +115,13 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
                 #     port=self.settings.child('com_port').value(),
                 #     baud=921600
                 # )
-                self.controller = self.visa_rm.open_resource(self.settings.child('com_port').value())
+                self.controller = self.visa_rm.open_resource(self.settings.child('com_port').value(),
+                                                             baud_rate=921600)
 
-            self.controller.timeout = 10
-            self.controller.write_termination = self.controller.CR + self.controller.LF
-            self.controller.write_termination = self.controller.CR + self.controller.LF
 
+                self.controller.read_termination = self.controller.CR + self.controller.LF
+                self.controller.write_termination = self.controller.CR + self.controller.LF
+                self.controller.timeout = 10
             self.flush_read()
 
             info = self.controller.query('VE')
@@ -193,16 +194,21 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
 
         axis_number = self.settings.child('axis').value()
         order = f'{axis_number:.0f}PR{relative_move:.0f}'
-        try:
-            self.controller._file.sendcmd(order)
-            # status = self.controller.ag_query('TE')
-            # if status != 'TE0':
-            #     logger.warning(f'wrong return from controller {status}')
-            self.flush_read()
+        ready = False
+        while not ready:
+            try:
 
-            self.poll_moving()
-        except SerialTimeoutException as e:
-            logger.warning(str(e))
+                self.controller.write(order)
+                # status = self.controller.ag_query('TE')
+                # if status != 'TE0':
+                #     logger.warning(f'wrong return from controller {status}')
+                self.flush_read()
+                ready = True
+
+            except SerialTimeoutException as e:
+                logger.warning(str(e))
+
+        self.poll_moving()
 
     def flush_read(self):
         while True:
@@ -238,12 +244,12 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         if param.name() == "sleep_time":
             self.controller._sleep_time = param.value()
         elif param.name() == 'channel':
-            self.controller.ag_sendcmd(f'CC{param.value()}')
-            status = self.controller.ag_query('TE')
+            self.controller.write(f'CC{param.value()}')
+            status = self.controller.query('TE')
             if status != 'TE0':
                 logger.warning(f'wrong return from controller {status}')
-            self.controller._file.flush()
-            channel = self.controller.ag_query('CC?')
+            self.flush_read()
+            channel = self.controller.query('CC?')
             param.setValue(int(channel[2:]))
 
 
@@ -252,7 +258,7 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
         Terminate the communication protocol.
         Not implemented.
         """
-        pass
+        self.controller.close()
 
 
 if __name__ == '__main__':
