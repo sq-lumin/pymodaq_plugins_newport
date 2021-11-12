@@ -36,12 +36,12 @@ class DAQ_Move_Conex(DAQ_Move_base):
     params= [{'title': 'controller library:', 'name': 'conex_lib', 'type': 'browsepath', 'value': conex_path},
              {'title': 'Controller Name:', 'name': 'controller_name', 'type': 'str', 'value': '', 'readonly': True},
              {'title': 'Motor ID:', 'name': 'motor_id', 'type': 'str', 'value': '', 'readonly': True},
-             {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'values': ports},
+             {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports},
              {'title': 'Controller address:', 'name': 'controller_address', 'type': 'int', 'value': 1, 'default': 1, 'min': 1},
               {'title': 'MultiAxes:', 'name': 'multiaxes', 'type': 'group','visible':is_multiaxes, 'children':[
                         {'title': 'is Multiaxes:', 'name': 'ismultiaxes', 'type': 'bool', 'value': is_multiaxes, 'default': False},
-                        {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'value': 'Master', 'values': ['Master','Slave']},
-                        {'title': 'Axis:', 'name': 'axis', 'type': 'list',  'values':stage_names},
+                        {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'value': 'Master', 'limits': ['Master','Slave']},
+                        {'title': 'Axis:', 'name': 'axis', 'type': 'list',  'limits':stage_names},
                         
                         ]}]+comon_parameters
 

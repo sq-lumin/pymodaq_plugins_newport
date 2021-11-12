@@ -48,14 +48,14 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
     port = 'COM6' if 'COM6' in ports else ports[0] if len(ports) > 0 else ''
 
     params = [
-                 {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'values': ports, 'value': port},
+                 {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports, 'value': port},
                  {'title': 'Firmware:', 'name': 'firmware', 'type': 'str', 'value': ''},
-                 {'title': 'Channel:', 'name': 'channel', 'type': 'list', 'values': channel_names},
-                 {'title': 'Axis:', 'name': 'axis', 'type': 'list', 'values': axis_names},
+                 {'title': 'Channel:', 'name': 'channel', 'type': 'list', 'limits': channel_names},
+                 {'title': 'Axis:', 'name': 'axis', 'type': 'list', 'limits': axis_names},
                  {'title': 'Sleep time (s):', 'name': 'sleep_time', 'type': 'float', 'value': 0.25},
                  {'title': 'MultiAxes:', 'name': 'multiaxes', 'type': 'group', 'visible': is_multiaxes, 'children': [
                      {'title': 'is Multiaxes:', 'name': 'ismultiaxes','type': 'bool', 'value': is_multiaxes},
-                     {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'values': ['Master', 'Slave']},
+                     {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'limits': ['Master', 'Slave']},
                   ]}
              ] + comon_parameters
 
