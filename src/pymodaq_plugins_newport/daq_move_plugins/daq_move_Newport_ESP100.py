@@ -164,9 +164,6 @@ class DAQ_Move_Newport_ESP100(DAQ_Move_base):
         position = self.set_position_with_scaling(position)
         out = self.controller.move_axis('ABS', self._axis, position)
 
-        self.poll_moving()
-
-
     def move_Rel(self,position):
         """
             Make the hardware relative move of the Piezo instrument from the given position after thread command signal was received in DAQ_Move_main.
@@ -187,8 +184,6 @@ class DAQ_Move_Newport_ESP100(DAQ_Move_base):
         position = self.set_position_relative_with_scaling(position)
 
         out = self.controller.move_axis('REL', self._axis, pos)
-        QThread.msleep(50)  # to make sure the closed loop converged
-        self.poll_moving()
 
     def move_Home(self):
         """

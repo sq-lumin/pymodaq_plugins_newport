@@ -199,8 +199,6 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
             # if status != 'TE0':
             #     logger.warning(f'wrong return from controller {status}')
             self.flush_read()
-
-            self.poll_moving()
         except SerialTimeoutException as e:
             logger.warning(str(e))
 
@@ -219,8 +217,6 @@ class DAQ_Move_Newport_AGUC8(DAQ_Move_base):
 
         self.current_position = 0.
         self.target_position = 0.
-
-        self.poll_moving()
 
 
     def stop_motion(self):

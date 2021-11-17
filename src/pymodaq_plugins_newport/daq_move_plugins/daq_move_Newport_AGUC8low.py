@@ -1,54 +1,22 @@
 from pymodaq.daq_move.utility_classes import DAQ_Move_base, comon_parameters, main
 from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo, set_logger, get_module_name
 from easydict import EasyDict as edict
-from instruments.newport.agilis import AGUC2
-import pyvisa
-from serial.serialwin32 import SerialTimeoutException
 
+from pymodaq_plugins_newport.hardware.AGUC8wrapper import AGUC8, COMPORTS
 logger = set_logger(get_module_name(__file__))
 
-
-"""
-Installation
-------------
-Install Newport AG-UC2-UC8 applet available here: https://www.newport.com/p/AG-UC8
-
-This plugin use the instrumentkit library. Currently the version proposed on pypi 0.6.0
-does not include the newport/agilis.py file that we are interrested in. We recommand to
-install the library from git (not with pip), as it is explained in this page:
-https://github.com/Galvant/InstrumentKit
-
-$ git clone git@github.com:Galvant/InstrumentKit.git
-$ cd InstrumentKit
-$ python setup.py install
-
-Troubleshooting
----------------
-It happens that the plugin initialize correctly (green light in a daq_move) but still
-sending a move order will have no effect.
-Try to load the AGUC2 class and launch an order in an independent script and try again
-with pymodaq. We do not know why but it seems to solve the problem...
-
-"""
 
 class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
     """
     """
     _controller_units = 'step'
     is_multiaxes = True
-    channel_names = [1, 2, 3, 4]
-    axis_names = [1, 2]
-
-    # find available COM ports
-    visa_rm = pyvisa.ResourceManager()
-    infos = visa_rm.list_resources_info()
-    ports = []
-    for k in infos.keys():
-        ports.append(infos[k].alias)
-    port = 'COM9' if 'COM9' in ports else ports[0] if len(ports) > 0 else ''
+    channel_names = AGUC8.channel_names
+    axis_names = AGUC8.axis_names
+    port = 'COM9' if 'COM9' in COMPORTS else COMPORTS[0] if len(COMPORTS) > 0 else ''
 
     params = [
-                 {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports, 'value': port},
+                 {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': COMPORTS, 'value': port},
                  {'title': 'Firmware:', 'name': 'firmware', 'type': 'str', 'value': ''},
                  {'title': 'Channel:', 'name': 'channel', 'type': 'list', 'limits': channel_names},
                  {'title': 'Axis:', 'name': 'axis', 'type': 'list', 'limits': axis_names},
@@ -70,9 +38,6 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         self._abs_steps = 0  # will keep a trace of the incremental steps (just as if there was an encoder)
         self.current_position = 0
         self.target_position = 0
-
-        # we do not poll the moving since we consider an actuator without encoder
-        # self.settings.child('epsilon').setValue(1)
 
     def ini_stage(self, controller=None):
         """
@@ -111,34 +76,16 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
                 else:
                     self.controller = controller
             else:  # Master stage
-                # self.controller = AGUC2.open_serial(
-                #     port=self.settings.child('com_port').value(),
-                #     baud=921600
-                # )
-                self.controller = self.visa_rm.open_resource(self.settings.child('com_port').value(),
-                                                             baud_rate=921600)
+                self.controller = AGUC8()
+                self.controller.open(self.settings.child('com_port').value())
+                info = self.controller.get_infos()
 
+                self.controller.select_channel(self.settings.child('channel').value())
 
-                self.controller.read_termination = self.controller.CR + self.controller.LF
-                self.controller.write_termination = self.controller.CR + self.controller.LF
-                self.controller.timeout = 10
-            self.flush_read()
-
-            info = self.controller.query('VE')
-            self.flush_read()
+            info = self.controller.get_infos()
             self.settings.child('firmware').setValue(info)
-            # Select the good channel.
-            channel = self.settings.child('channel').value()
-            order = "CC" + str(channel)
-            self.controller.write(order)
-            self.flush_read()
 
-            # Configure the sleep time which is a time delay in second after each order.
-            # The setter of the library does not work that is why we use this dirty way
-            # by calling directly a private attribute.
-            self.controller._sleep_time = self.settings.child('sleep_time').value()
-
-            self.status.info = f"Actuator AGUC8 initialized on com port {self.settings.child('com_port').value()}"
+            self.status.info = info
             self.status.controller = self.controller
             self.status.initialized = True
 
@@ -192,42 +139,14 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         relative_move = self.set_position_relative_with_scaling(relative_move)
         self.target_position = relative_move + self.current_position
 
-        axis_number = self.settings.child('axis').value()
-        order = f'{axis_number:.0f}PR{relative_move:.0f}'
-        ready = False
-        while not ready:
-            try:
-
-                self.controller.write(order)
-                # status = self.controller.ag_query('TE')
-                # if status != 'TE0':
-                #     logger.warning(f'wrong return from controller {status}')
-                self.flush_read()
-                ready = True
-
-            except SerialTimeoutException as e:
-                logger.warning(str(e))
-
-        self.poll_moving()
-
-    def flush_read(self):
-        while True:
-            try:
-                ret = self.controller.read()
-                print(ret)
-            except:
-                break
+        self.controller.move_rel(self.settings.child('axis').value(), int(relative_move))
 
     def move_Home(self):
         """
 
         """
-
         self.current_position = 0.
         self.target_position = 0.
-
-        self.poll_moving()
-
 
     def stop_motion(self):
         """
@@ -241,22 +160,13 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         """
         Called after a param_tree_changed signal from DAQ_Move_main.
         """
-        if param.name() == "sleep_time":
-            self.controller._sleep_time = param.value()
-        elif param.name() == 'channel':
-            self.controller.write(f'CC{param.value()}')
-            status = self.controller.query('TE')
-            if status != 'TE0':
-                logger.warning(f'wrong return from controller {status}')
-            self.flush_read()
-            channel = self.controller.query('CC?')
-            param.setValue(int(channel[2:]))
-
+        if param.name() == 'channel':
+            self.controller.select_channel(param.value())
+            param.setValue(int(self.controller.read_channel()))
 
     def close(self):
         """
         Terminate the communication protocol.
-        Not implemented.
         """
         self.controller.close()
 
