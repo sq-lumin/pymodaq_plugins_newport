@@ -2,17 +2,17 @@ from pymodaq.daq_move.utility_classes import DAQ_Move_base, comon_parameters, ma
 from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo, set_logger, get_module_name
 from easydict import EasyDict as edict
 
-from pymodaq_plugins_newport.hardware.AGUC8wrapper import AGUC8, COMPORTS
+from pymodaq_plugins_newport.hardware.agilis_serial import AgilisSerial, COMPORTS
 logger = set_logger(get_module_name(__file__))
 
 
-class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
+class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
     """
     """
     _controller_units = 'step'
     is_multiaxes = True
-    channel_names = AGUC8.channel_names
-    axis_names = AGUC8.axis_names
+    channel_names = AgilisSerial.channel_indexes
+    axis_names = AgilisSerial.axis_indexes
     port = 'COM9' if 'COM9' in COMPORTS else COMPORTS[0] if len(COMPORTS) > 0 else ''
 
     params = [
@@ -35,7 +35,6 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         super().__init__(parent, params_state)
         self.controller = None
 
-        self._abs_steps = 0  # will keep a trace of the incremental steps (just as if there was an encoder)
         self.current_position = 0
         self.target_position = 0
 
@@ -56,17 +55,7 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
             * initialized: (bool): False if initialization failed otherwise True
         """
         try:
-            # initialize the stage and its controller status
-            # controller is an object that may be passed to other instances of
-            # DAQ_Move_Mock in case
-            # of one controller controlling multiactuators (or detector)
-
             self.status.update(edict(info="", controller=None, initialized=False))
-
-            # check whether this stage is controlled by a multiaxe controller
-            # (to be defined for each plugin)
-            # if multiaxes then init the controller here if Master state otherwise use
-            # external controller
             if self.settings.child('multiaxes', 'ismultiaxes').value()\
                     and self.settings.child('multiaxes',
                                             'multi_status').value() == "Slave":
@@ -76,16 +65,13 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
                 else:
                     self.controller = controller
             else:  # Master stage
-                self.controller = AGUC8()
-                self.controller.open(self.settings.child('com_port').value())
-                info = self.controller.get_infos()
+                self.controller = AgilisSerial()
+                info = self.controller.init_com_remote(self.settings.child('com_port').value())
+                if self.controller.get_channel() != self.settings.child('channel').value():
+                    self.controller.select_channel(self.settings.child('channel').value())
+                self.settings.child('firmware').setValue(info)
+                self.status.info = info
 
-                self.controller.select_channel(self.settings.child('channel').value())
-
-            info = self.controller.get_infos()
-            self.settings.child('firmware').setValue(info)
-
-            self.status.info = info
             self.status.controller = self.controller
             self.status.initialized = True
 
@@ -107,7 +93,7 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         float: The position obtained after scaling conversion.
         """
 
-        return self.target_position
+        return self.controller.get_step_counter(self.settings.child('axis').value())
 
     def move_Abs(self, position):
         """
@@ -131,10 +117,6 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
             number of steps. It has to be converted to int since here the unit is in
             number of steps.
         """
-        # the syntax of the order is given by Newport documentation Agilis Series
-        # User’s Manual v2.2.x
-        # We do not use the move_relative command from the library since it raises an
-        # error.
         relative_move = self.check_bound(self.current_position + relative_move) - self.current_position
         relative_move = self.set_position_relative_with_scaling(relative_move)
         self.target_position = relative_move + self.current_position
@@ -145,6 +127,7 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         """
 
         """
+        self.controller.counter_to_zero(self.settings.child('axis').value())
         self.current_position = 0.
         self.target_position = 0.
 
@@ -154,7 +137,7 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         Not implemented.
         """
 
-        pass
+        self.controller.stop(self.settings.child('axis').value())
 
     def commit_settings(self, param):
         """
@@ -162,7 +145,7 @@ class DAQ_Move_Newport_AGUC8low(DAQ_Move_base):
         """
         if param.name() == 'channel':
             self.controller.select_channel(param.value())
-            param.setValue(int(self.controller.read_channel()))
+            param.setValue(int(self.controller.get_channel()))
 
     def close(self):
         """

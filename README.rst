@@ -30,7 +30,7 @@ Actuators
 
 * **Conex**: Piezo actuators from the CONEX-AGAP series"
 * **Newport_ESP100**: ESP100 motion controllers
-* **AGILIS AG-CU8**: tested with motorized mounts AG-M100N (no encoder)
+* **AgilisSerial**: for controllers AG-UC8 and AG-UC2 tested with motorized mounts AG-M100N (no encoder)
 
 Installation notes
 ==================
@@ -41,17 +41,11 @@ AGILIS AG-CU8
 Install Newport AG-UC2-UC8 applet available here: https://www.newport.com/p/AG-UC8 and test that
 you can communicate with this firmware.
 
-This plugin use the instrumentkit library. Currently the version proposed on pypi 0.6.0
-does not include the newport/agilis.py file that we are interrested in. We recommand to
-install the library from git (not with pip), as it is explained in this page:
-https://github.com/Galvant/InstrumentKit
-
-$ git clone git@github.com:Galvant/InstrumentKit.git
-
-$ cd InstrumentKit
+This plugin use the included AgilisSerial wrapper communicating with the device using serial comunication
+and the pyvisa package
 
 $ python setup.py install
 
 This last command should be executed in the python environment where you installed pymodaq.
 
-Tested on Windows10 with pymodaq 3.3.0.
+Tested on Windows10 with pymodaq >= 3.3.0.
