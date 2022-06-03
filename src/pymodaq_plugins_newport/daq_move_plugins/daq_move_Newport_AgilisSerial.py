@@ -13,6 +13,7 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
     is_multiaxes = True
     channel_names = AgilisSerial.channel_indexes
     axis_names = AgilisSerial.axis_indexes
+    epsilon = 1
     port = 'COM9' if 'COM9' in COMPORTS else COMPORTS[0] if len(COMPORTS) > 0 else ''
 
     params = [
@@ -93,7 +94,8 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
         float: The position obtained after scaling conversion.
         """
 
-        return self.controller.get_step_counter(self.settings.child('axis').value())
+        #return self.controller.get_step_counter(self.settings.child('axis').value(), read_controller=False)
+        return self.target_position
 
     def move_Abs(self, position):
         """

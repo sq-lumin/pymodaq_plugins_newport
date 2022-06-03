@@ -2,7 +2,7 @@ import time
 import pyvisa
 from threading import Lock
 from pyvisa.errors import VisaIOError
-
+import pymodaq.daq_utils.daq_utils as utils
 from pymodaq.daq_utils.daq_utils import set_logger, get_module_name
 
 logger = set_logger(get_module_name(__file__), add_to_console=False)
@@ -114,29 +114,34 @@ class AgilisSerial:
 
     def move_rel(self, axis: int, steps: int):
         self.check_axis_index(axis)
-        self.wait_axis_ready(axis)
         order = f'{axis:.0f}PR{steps:.0f}'
         self.write(order)
+        self._steps[axis] += steps
 
     def counter_to_zero(self, axis):
         self.check_axis_index(axis)
         command = f'{axis:.0f}ZP'
         self.write(command)
 
-    def get_step_counter(self, axis):
+    @utils.timer
+    def get_step_counter(self, axis, read_controller=True):
         """
         Returns the number of accumulated steps in forward direction minus the number of steps in backward direction
         since powering the controller or since the last ZP (zero position) command
         """
+
         self.check_axis_index(axis)
-        self.wait_axis_ready(axis)
-        command = f'{axis:.0f}TP'
-        steps_string = self.query(command)
-        if steps_string is None or command not in steps_string:
-            steps = self._steps[axis]
+        if read_controller:
+            self.wait_axis_ready(axis)
+            command = f'{axis:.0f}TP'
+            steps_string = self.query(command)
+            if steps_string is None or command not in steps_string:
+                steps = self._steps[axis]
+            else:
+                steps = int(steps_string.split(command)[1])
+                self._steps[axis] = steps
         else:
-            steps = int(steps_string.split(command)[1])
-            self._steps[axis] = steps
+            steps = self._steps[axis]
         return steps
 
     def is_at_limits(self):
