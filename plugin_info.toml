@@ -2,7 +2,7 @@
 
 [plugin-info]
 SHORT_PLUGIN_NAME = 'newport'  #for instance daqmx
-package-url = 'https://github.com/CEMES-CNRS/pymodaq_plugins_newport' #to modify
+package-url = 'https://github.com/PyMoDAQ/pymodaq_plugins_newport' #to modify
 description = 'Set of PyMoDAQ plugins for instruments from Newport (Conex, ESP100,...)'
 
 author = 'Sébastien Weber'

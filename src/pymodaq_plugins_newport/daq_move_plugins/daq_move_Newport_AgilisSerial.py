@@ -1,4 +1,4 @@
-from pymodaq.daq_move.utility_classes import DAQ_Move_base, comon_parameters, main
+from pymodaq.control_modules.move_utility_classes import DAQ_Move_base, comon_parameters, main
 from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo, set_logger, get_module_name
 from easydict import EasyDict as edict
 

@@ -9,8 +9,8 @@ pymodaq_plugins_newport (Newport Instruments)
    :target: https://pymodaq.readthedocs.io/en/stable/?badge=latest
    :alt: Documentation Status
 
-.. image:: https://github.com/CEMES-CNRS/pymodaq_plugins_newport/workflows/Upload%20Python%20Package/badge.svg
-    :target: https://github.com/CEMES-CNRS/pymodaq_plugins_newport
+.. image:: https://github.com/PyMoDAQ/pymodaq_plugins_newport/workflows/Upload%20Python%20Package/badge.svg
+    :target: https://github.com/PyMoDAQ/pymodaq_plugins_newport
 
 PyMoDAQ plugin for instruments from Newport (Conex, ESP100, AG-CU8...)
 
