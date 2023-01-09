@@ -32,7 +32,13 @@ class SerialBase(object):
         return com_ports
     
     def init_communication(self, com_port, axis=1):
-        raise NotImplementedError('This method should be implemented in your real class')
+        if com_port in self.com_ports:
+            self._controller = self._VISA_rm.open_resource(com_port)
+
+            self._controller.data_bits = 8
+            self._controller.stop_bits = pyvisa.constants.StopBits['one']
+            self._controller.parity = pyvisa.constants.Parity['none']
+            self.timeout = 2000
         
 
     def close_communication(self, axis=1):
