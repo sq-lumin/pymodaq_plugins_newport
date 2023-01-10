@@ -35,8 +35,8 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
     _controller_units = 'mm'  # TODO for your plugin: put the correct unit here
     is_multiaxes = True  # TODO for your plugin set to True if this plugin is controlled for a multiaxis controller
     axes_names = ['1']  # The axis list represents the number of smc controllers, indexed: first=1, second=2 etc.
-
-    params = [  {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': com_ports, 'value': 'COM5'},
+    _epsilon = 0.0001
+    params = [  {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': com_ports, 'value': 'COM17'},
               # TODO for your custom plugin: elements to be added here as dicts in order to control your custom stage
                 ] + comon_parameters_fun(is_multiaxes, axes_names)
 
