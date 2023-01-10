@@ -30,4 +30,24 @@ class ESP100(SerialBase):
     def close_communication(self, axis=1):
         self.turn_motor_off(axis=axis)
         super().close_communication(axis)
+        
+    def move_home(self, axis=1):
+        self._write_command(f'{axis}OR1')
+        
+    
+    def get_velocity(self, axis=1):
+        self._write_command(f'{axis}VA?')
+        pos = self._controller.read_ascii_values()[0]
+        return pos
+    
+    def get_velocity_max(self, axis=1):
+        self._write_command(f'{axis}VU?')
+        pos = self._controller.read_ascii_values()[0]
+        return pos
 
+    def get_position(self, axis=1):
+        """ return the given axis position always in mm
+        """
+        self._write_command(f'{axis}TP')
+        pos = self._controller.read_ascii_values()[0]
+        return pos
