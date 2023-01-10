@@ -68,6 +68,10 @@ class SerialBase(object):
         self._controller.timeout = self._timeout
         return info
     
+    
+    def read(self):
+        return self._get_read()
+    
     def move_axis(self, move_type='ABS', axis=1, pos=0.):
         if move_type == 'ABS':
             ret = self._write_command(f'{axis}PA{pos}')
@@ -79,28 +83,18 @@ class SerialBase(object):
         return ret
 
     def get_position(self, axis=1):
-        """ return the given axis position always in mm
-        """
-        self._write_command(f'{axis}TP')
-        pos = self._controller.read_ascii_values()[0]
-        return pos
+        raise NotImplementedError
 
-    def get_velocity(self, axis=1):
-        self._write_command(f'{axis}VA?')
-        pos = self._controller.read_ascii_values()[0]
-        return pos
 
     def get_velocity_max(self, axis=1):
-        self._write_command(f'{axis}VU?')
-        pos = self._controller.read_ascii_values()[0]
-        return pos
+        raise NotImplementedError
 
     def set_velocity(self, velocity, axis=1):
         self._write_command(f'{axis}VA{velocity}')
 
 
     def move_home(self, axis=1):
-        self._write_command(f'{axis}OR1')
+        raise NotImplementedError
 
     def stop_motion(self, axis=1):
         self._write_command(f'{axis}ST')
