@@ -1,10 +1,20 @@
-from pymodaq.control_modules.move_utility_classes import DAQ_Move_base
-from pymodaq.daq_move.utility_classes import comon_parameters
+
+from pymodaq.control_modules.move_utility_classes import comon_parameters_fun, main, DAQ_Move_base
 
 from pymodaq.utils.daq_utils import ThreadCommand, getLineInfo
 from easydict import EasyDict as edict
 import sys
 import clr
+from serial.tools import list_ports
+
+
+conex_path = 'C:\\Program Files\\Newport\\Piezo Motion Control\\Newport CONEX-AGAP Applet\\Samples'
+sys.path.append(conex_path)
+clr.AddReference("ConexAGAPCmdLib")
+import Newport.ConexAGAPCmdLib as Conexcmd
+
+COMPORTS = [str(port)[0:4] for port in list(list_ports.comports())]
+
 
 class DAQ_Move_Conex(DAQ_Move_base):
     """
@@ -24,45 +34,25 @@ class DAQ_Move_Conex(DAQ_Move_base):
 
     _controller_units = 'µm'
 
-    #find available COM ports
-    import serial.tools.list_ports
-    ports =[str(port)[0:4] for port in list(serial.tools.list_ports.comports())]
-    #if ports==[]:
-    #    ports.append('')
-    conex_path='C:\\Program Files\\Newport\\Piezo Motion Control\\Newport CONEX-AGAP Applet\\Samples'
-    is_multiaxes=True
-    stage_names=['U','V']
+    # find available COM ports
 
-    params= [{'title': 'controller library:', 'name': 'conex_lib', 'type': 'browsepath', 'value': conex_path},
-             {'title': 'Controller Name:', 'name': 'controller_name', 'type': 'str', 'value': '', 'readonly': True},
-             {'title': 'Motor ID:', 'name': 'motor_id', 'type': 'str', 'value': '', 'readonly': True},
-             {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports},
-             {'title': 'Controller address:', 'name': 'controller_address', 'type': 'int', 'value': 1, 'default': 1, 'min': 1},
-              {'title': 'MultiAxes:', 'name': 'multiaxes', 'type': 'group','visible':is_multiaxes, 'children':[
-                        {'title': 'is Multiaxes:', 'name': 'ismultiaxes', 'type': 'bool', 'value': is_multiaxes, 'default': False},
-                        {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'value': 'Master', 'limits': ['Master','Slave']},
-                        {'title': 'Axis:', 'name': 'axis', 'type': 'list',  'limits':stage_names},
-                        
-                        ]}]+comon_parameters
+    is_multiaxes = True
+    axes_names = ['U', 'V']
+    _epsilon = 0.0001
 
-    def __init__(self, parent=None, params_state=None):
-        super().__init__(parent, params_state)
-        self.settings.child(('epsilon')).setValue(0.0001)
+    params = [{'title': 'controller library:', 'name': 'conex_lib', 'type': 'browsepath', 'value': conex_path},
+              {'title': 'Controller Name:', 'name': 'controller_name', 'type': 'str', 'value': '', 'readonly': True},
+              {'title': 'Motor ID:', 'name': 'motor_id', 'type': 'str', 'value': '', 'readonly': True},
+              {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': COMPORTS},
+              {'title': 'Controller address:', 'name': 'controller_address', 'type': 'int', 'value': 1, 'default': 1,
+               'min': 1},
+              ] + comon_parameters_fun(is_multiaxes, axes_names, epsilon=_epsilon)
 
-        # to be adjusted on the different computers
-        try:
-            sys.path.append(self.settings.child(('conex_lib')).value())
-            clr.AddReference("ConexAGAPCmdLib")
-            import Newport.ConexAGAPCmdLib as Conexcmd
-            self.controller = Conexcmd.ConexAGAPCmds()
-            self.settings.child('bounds', 'is_bounds').setValue(True)
-            self.settings.child('bounds', 'min_bound').setValue(-0.02)
-            self.settings.child('bounds', 'max_bound').setValue(0.02)
-
-        except Exception as e:
-            self.emit_status(ThreadCommand("Update_Status", [getLineInfo() + str(e)]))
-            raise Exception(getLineInfo() + str(e))
-
+    def ini_attributes(self):
+        self.controller: Conexcmd.ConexAGAPCmds = None
+        self.settings.child('bounds', 'is_bounds').setValue(True)
+        self.settings.child('bounds', 'min_bound').setValue(-0.02)
+        self.settings.child('bounds', 'max_bound').setValue(0.02)
 
     def commit_settings(self,param):
         """
@@ -76,63 +66,20 @@ class DAQ_Move_Conex(DAQ_Move_base):
 
     def ini_stage(self, controller=None):
         """
-            Initialize the controller and stages (axes) with given parameters.
 
-            =============== ================================================ =========================================================================================
-            **Parameters**   **Type**                                         **Description**
-            *controller*     instance of the specific controller object       If defined this hardware will use it and will not initialize its own controller instance
-            =============== ================================================ =========================================================================================
-
-            Returns
-            -------
-            Easydict
-                dictionnary containing keys:
-                 * *info* : string displaying various info
-                 * *controller*: instance of the controller object in order to control other axes without the need to init the same controller twice
-                 * *stage*: instance of the stage (axis or whatever) object
-                 * *initialized*: boolean indicating if initialization has been done corretly
-
-            See Also
-            --------
-            daq_utils.ThreadCommand
         """
-        try:
-            # initialize the stage and its controller status
-            # controller is an object that may be passed to other instances of daq_move_Mock in case
-            # of one controller controlling multiaxes
+        self.controller = self.ini_stage_init(controller, Conexcmd.ConexAGAPCmds())
 
-            self.status.update(edict(info="",controller=None,initialized=False))
-            out=-1
+        if self.settings['multiaxes', 'multi_status'] == "Master":
+            out = self.controller.OpenInstrument(self.settings['com_port'][0:4])
 
-            #check whether this stage is controlled by a multiaxe controller (to be defined for each plugin)
-
-            # if mutliaxes then init the controller here if Master state otherwise use external controller
-            if self.settings.child('multiaxes','ismultiaxes').value() and self.settings.child('multiaxes','multi_status').value()=="Slave":
-                if controller is None: 
-                    raise Exception('no controller has been defined externally while this axe is a slave one')
-                else:
-                    self.controller=controller
-                    out=0
-            else: #Master stage
-                out=self.controller.OpenInstrument(self.settings.child(('com_port')).value()[0:4])
-
-
-            controller_name=self.controller.VE(self.settings.child(('controller_address')).value(),"","")[1]
-            motor_id=self.controller.ID_Get(self.settings.child(('controller_address')).value(),"","")[1]
-            self.settings.child(('controller_name')).setValue(controller_name)
-            self.settings.child(('motor_id')).setValue(motor_id)
-            self.status.info=controller_name + " / " + motor_id
-            self.status.controller=self.controller
-            if out==0:
-                self.status.initialized=True
-
-            return self.status
-
-        except Exception as e:
-            self.emit_status(ThreadCommand('Update_Status',[getLineInfo()+ str(e),'log']))
-            self.status.info=getLineInfo()+ str(e)
-            self.status.initialized=False
-            return self.status
+        controller_name = self.controller.VE(self.settings['controller_address'], "", "")[1]
+        motor_id = self.controller.ID_Get(self.settings['controller_address'], "", "")[1]
+        self.settings.child('controller_name').setValue(controller_name)
+        self.settings.child('motor_id').setValue(motor_id)
+        info = controller_name + " / " + motor_id
+        initialized = out == 0
+        return info, initialized
 
     def close(self):
         """
@@ -149,7 +96,7 @@ class DAQ_Move_Conex(DAQ_Move_base):
         self.controller.ST(self.settings.child(('controller_address')).value(),"")
         self.move_done()
 
-    def check_position(self):
+    def get_actuator_value(self):
         """
             Get the current hardware position with scaling conversion given by get_position_with_scaling.
 
@@ -157,15 +104,13 @@ class DAQ_Move_Conex(DAQ_Move_base):
             --------
             daq_move_base.get_position_with_scaling, daq_utils.ThreadCommand
         """
-        pos=self.controller.TP(self.settings.child(('controller_address')).value(),
-                         self.settings.child('multiaxes','axis').value(),0.0000,"")[1]
-        pos=self.get_position_with_scaling(pos)
-        self.current_position=pos
-        self.emit_status(ThreadCommand('check_position',[pos]))
+        pos = self.controller.TP(self.settings['controller_address'],
+                                 self.settings['multiaxes', 'axis'], 0.0000, "")[1]
+        pos = self.get_position_with_scaling(pos)
+        self.current_position = pos
         return pos
 
-
-    def move_Abs(self, position):
+    def move_abs(self, position):
         """
             Make the hardware absolute move from the given position after thread command signal was received in daq_move_main.
 
@@ -180,16 +125,14 @@ class DAQ_Move_Conex(DAQ_Move_base):
             daq_move_base.set_position_with_scaling, daq_move_base.poll_moving
 
         """
-        position=self.check_bound(position)
-        self.target_position=position
+        position = self.check_bound(position)
+        self.target_position = position
 
-        position=self.set_position_with_scaling(position)
-        out=self.controller.PA_Set(self.settings.child(('controller_address')).value(),
-                              self.settings.child('multiaxes','axis').value(),position,"")
-        self.poll_moving()
+        position = self.set_position_with_scaling(position)
+        out = self.controller.PA_Set(self.settings['controller_address'],
+                                     self.settings['multiaxes', 'axis'], position, "")
 
-
-    def move_Rel(self, position):
+    def move_rel(self, position):
         """
             | Make the hardware relative move from the given position after thread command signal was received in daq_move_main.
             |
@@ -206,16 +149,15 @@ class DAQ_Move_Conex(DAQ_Move_base):
             daq_move_base.set_position_with_scaling, daq_move_base.poll_moving
 
         """
-        position=self.check_bound(self.current_position+position)-self.current_position
-        self.target_position=position+self.current_position
+        position = self.check_bound(self.current_position + position) - self.current_position
+        self.target_position = position + self.current_position
 
-        position=self.set_position_relative_with_scaling(position)
+        position = self.set_position_relative_with_scaling(position)
 
-        out=self.controller.PR_Set(self.settings.child(('controller_address')).value(),
-                              self.settings.child('multiaxes','axis').value(),position,"")
-        self.poll_moving()
+        out = self.controller.PR_Set(self.settings['controller_address'],
+                                     self.settings['multiaxes', 'axis'], position, "")
 
-    def move_Home(self):
+    def move_home(self):
         """
             Make the absolute move to original position (0).
 
@@ -223,4 +165,8 @@ class DAQ_Move_Conex(DAQ_Move_base):
             --------
             move_Abs
         """
-        self.move_Abs(0)
+        self.move_abs(0)
+
+
+if __name__ == '__main__':
+    main(__file__, init=False)
