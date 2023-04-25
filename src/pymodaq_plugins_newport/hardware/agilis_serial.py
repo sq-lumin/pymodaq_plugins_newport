@@ -3,7 +3,7 @@ import pyvisa
 from threading import Lock
 from pyvisa.errors import VisaIOError
 import pymodaq.daq_utils.daq_utils as utils
-from pymodaq.daq_utils.daq_utils import set_logger, get_module_name
+from pymodaq.utils.logger import set_logger, get_module_name
 
 logger = set_logger(get_module_name(__file__), add_to_console=False)
 visa_rm = pyvisa.ResourceManager()
@@ -14,6 +14,7 @@ for k in _infos.keys():
     COMPORTS.append(_infos[k].alias)
 
 lock = Lock()
+
 
 class AgilisChannelError(Exception):
     pass
