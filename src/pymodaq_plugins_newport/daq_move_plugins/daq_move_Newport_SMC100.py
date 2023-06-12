@@ -6,8 +6,7 @@ Created on Mon Jan  9 15:57:26 2023
 """
 from pymodaq.control_modules.move_utility_classes import DAQ_Move_base, main  # base class
 from pymodaq.control_modules.move_utility_classes import comon_parameters_fun  # common set of parameters for all actuators
-from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo  # object used to send info back to the main thread
-from easydict import EasyDict as edict  # type of dict
+
 
 from pymodaq_plugins_newport.hardware.smc100 import SMC100
 import pyvisa
@@ -29,24 +28,17 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
     controller: object
         The particular object that allow the communication with the hardware, in general a python wrapper around the
          hardware library
-    # TODO add your particular attributes here if any
 
     """
-    _controller_units = 'mm'  # TODO for your plugin: put the correct unit here
-    is_multiaxes = True  # TODO for your plugin set to True if this plugin is controlled for a multiaxis controller
+    _controller_units = 'mm'
+    is_multiaxes = True
     axes_names = ['1']  # The axis list represents the number of smc controllers, indexed: first=1, second=2 etc.
     _epsilon = 0.0001
-    params = [  {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': com_ports, 'value': 'COM17'},
-              # TODO for your custom plugin: elements to be added here as dicts in order to control your custom stage
-                ] + comon_parameters_fun(is_multiaxes, axes_names)
+    params = [{'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': com_ports, 'value': 'COM17'},
+                ] + comon_parameters_fun(is_multiaxes, axes_names, epsilon=_epsilon)
 
     def ini_attributes(self):
-        #  TODO declare the type of the wrapper (and assign it to self.controller) you're going to use for easy
-        #  autocompletion
         self.controller: SMC100 = None
-
-        #TODO declare here attributes you want/need to init with a default value
-        pass
 
     def get_actuator_value(self):
         """Get the current value from the hardware with scaling conversion.
@@ -75,11 +67,7 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
         param: Parameter
             A given parameter (within detector_settings) whose value has been changed by the user
         """
-        ## TODO for your custom plugin
-        if param.name() == "a_parameter_you've_added_in_self.params":
-           self.controller.your_method_to_apply_this_param_change()
-        else:
-            pass
+        pass
 
     def ini_stage(self, controller=None):
         """Actuator communication initialization
@@ -103,7 +91,7 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
                 self.settings['com_port'])
         axis = int(self.settings.child('multiaxes', 'axis').value())
         info = self.controller.get_controller_infos(axis)
-        initialized = True  # todo
+        initialized = True
         return info, initialized
 
     def move_abs(self, value):
@@ -117,9 +105,9 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
         value = self.check_bound(value)  #if user checked bounds, the defined bounds are applied here
         self.target_value = value
         value = self.set_position_with_scaling(value)  # apply scaling if the user specified one
-        ## TODO for your custom plugin
-        axis = int(self.settings.child('multiaxes', 'axis').value())
-        self.controller.move_axis(axis=axis,pos=value)  # when writing your own plugin replace this line
+
+        axis = int(self.settings['multiaxes', 'axis'])
+        self.controller.move_axis(axis=axis, pos=value)  # when writing your own plugin replace this line
 
     def move_rel(self, value):
         """ Move the actuator to the relative target actuator value defined by value
@@ -132,23 +120,18 @@ class DAQ_Move_Newport_SMC100(DAQ_Move_base):
         self.target_value = value + self.current_position
         value = self.set_position_relative_with_scaling(value)
 
-        axis = int(self.settings.child('multiaxes', 'axis').value())
-        self.controller.move_axis('REL',axis=axis,pos=value)  # when writing your own plugin replace this line
-
+        axis = int(self.settings['multiaxes', 'axis'])
+        self.controller.move_axis('REL', axis=axis, pos=value)  # when writing your own plugin replace this line
 
     def move_home(self):
         """Call the reference method of the controller"""
-
-        ## TODO for your custom plugin
-        axis = int(self.settings.child('multiaxes', 'axis').value())
+        axis = int(self.settings['multiaxes', 'axis'])
         self.controller.move_home(axis)  # when writing your own plugin replace this line
 
-
     def stop_motion(self):
-      """Stop the actuator and emits move_done signal"""
-
-      axis = int(self.settings.child('multiaxes', 'axis').value())
-      self.controller.stop_motion(axis)  # when writing your own plugin replace this line
+        """Stop the actuator and emits move_done signal"""
+        axis = int(self.settings['multiaxes', 'axis'])
+        self.controller.stop_motion(axis)  # when writing your own plugin replace this line
 
 
 if __name__ == '__main__':

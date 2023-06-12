@@ -1,7 +1,6 @@
 
-from pymodaq.control_modules.move_utility_classes import DAQ_Move_base, main
-from pymodaq.daq_move.utility_classes import comon_parameters
-from pymodaq.daq_utils.daq_utils import ThreadCommand, getLineInfo
+from pymodaq.control_modules.move_utility_classes import DAQ_Move_base, main, comon_parameters_fun
+from pymodaq.utils.daq_utils import ThreadCommand, getLineInfo
 from pymodaq_plugins_newport.hardware.esp100 import ESP100
 from easydict import EasyDict as edict
 import pyvisa
@@ -27,25 +26,20 @@ class DAQ_Move_Newport_ESP100(DAQ_Move_base):
 
 
     is_multiaxes = False
-    stage_names = []
+    axes_names = []
+    _epsilon = 0.01
 
-    params= [{'title': 'Time interval (ms):', 'name': 'time_interval', 'type': 'int', 'value': 200},
-             {'title': 'Controller Info:', 'name': 'controller_id', 'type': 'text', 'value': '', 'readonly': True},
-             {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports, 'value': port},
-             {'title': 'Velocity:', 'name': 'velocity', 'type': 'float', 'value': 1.0},
+    params = [{'title': 'Time interval (ms):', 'name': 'time_interval', 'type': 'int', 'value': 200},
+              {'title': 'Controller Info:', 'name': 'controller_id', 'type': 'text', 'value': '', 'readonly': True},
+              {'title': 'COM Port:', 'name': 'com_port', 'type': 'list', 'limits': ports, 'value': port},
+              {'title': 'Velocity:', 'name': 'velocity', 'type': 'float', 'value': 1.0},
 
-            {'title': 'MultiAxes:', 'name': 'multiaxes', 'type': 'group','visible':is_multiaxes, 'children':[
-                        {'title': 'is Multiaxes:', 'name': 'ismultiaxes', 'type': 'bool', 'value': is_multiaxes, 'default': False},
-                        {'title': 'Status:', 'name': 'multi_status', 'type': 'list', 'value': 'Master', 'limits': ['Master', 'Slave']},
-                        {'title': 'Axis:', 'name': 'axis', 'type': 'list',  'limits': stage_names},
-                        
-                        ]}]+comon_parameters
+              ] + comon_parameters_fun(is_multiaxes, axes_names, epsilon=_epsilon)
 
-        
+
     def ini_attributes(self):
         self.settings.child('epsilon').setValue(0.01)
         self.controller: ESP100 = None
-        
 
     def ini_stage(self, controller=None):
             
@@ -59,7 +53,6 @@ class DAQ_Move_Newport_ESP100(DAQ_Move_base):
         self.settings.child('controller_id').setValue(controller_id)
         self.settings.child('velocity').setValue(self.controller.get_velocity(self._axis))
         self.settings.child('velocity').setOpts(max=self.controller.get_velocity_max(self._axis))
-        self.settings.child('epsilon').setValue(0.1)
 
         info = f'Initialized with controller ID: {controller_id}'
         initialized = True

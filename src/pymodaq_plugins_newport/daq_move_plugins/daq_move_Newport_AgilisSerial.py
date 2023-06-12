@@ -1,5 +1,6 @@
 from pymodaq.control_modules.move_utility_classes import DAQ_Move_base, comon_parameters, main
-from pymodaq.utils.daq_utils import ThreadCommand, getLineInfo, set_logger, get_module_name
+from pymodaq.utils.daq_utils import ThreadCommand, getLineInfo
+from pymodaq.utils.logger import set_logger, get_module_name
 from easydict import EasyDict as edict
 
 from pymodaq_plugins_newport.hardware.agilis_serial import AgilisSerial, COMPORTS
@@ -85,7 +86,7 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
             self.status.initialized = False
             return self.status
 
-    def check_position(self):
+    def get_actuator_value(self):
         """
         Get the current position from the hardware with scaling conversion.
 
@@ -97,7 +98,7 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
         #return self.controller.get_step_counter(self.settings.child('axis').value(), read_controller=False)
         return self.target_position
 
-    def move_Abs(self, position):
+    def move_abs(self, position):
         """
         Move the actuator to the absolute target defined by position.
         Parameters
@@ -106,9 +107,9 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
         """
         position = self.check_bound(position)
         rel_position = position - self.current_position
-        self.move_Rel(rel_position)
+        self.move_rel(rel_position)
 
-    def move_Rel(self, relative_move):
+    def move_rel(self, relative_move):
         """
         Move the actuator to the relative target actuator value defined by
             relative_move
@@ -125,7 +126,7 @@ class DAQ_Move_Newport_AgilisSerial(DAQ_Move_base):
 
         self.controller.move_rel(self.settings.child('axis').value(), int(relative_move))
 
-    def move_Home(self):
+    def move_home(self):
         """
 
         """
