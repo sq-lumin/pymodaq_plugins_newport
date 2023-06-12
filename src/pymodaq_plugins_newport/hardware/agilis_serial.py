@@ -2,7 +2,7 @@ import time
 import pyvisa
 from threading import Lock
 from pyvisa.errors import VisaIOError
-import pymodaq.daq_utils.daq_utils as utils
+import pymodaq.utils.daq_utils as utils
 from pymodaq.utils.logger import set_logger, get_module_name
 
 logger = set_logger(get_module_name(__file__), add_to_console=False)

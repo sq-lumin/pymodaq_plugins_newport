@@ -72,6 +72,8 @@ class DAQ_Move_Conex(DAQ_Move_base):
 
         if self.settings['multiaxes', 'multi_status'] == "Master":
             out = self.controller.OpenInstrument(self.settings['com_port'][0:4])
+        else:
+            out = 0
 
         controller_name = self.controller.VE(self.settings['controller_address'], "", "")[1]
         motor_id = self.controller.ID_Get(self.settings['controller_address'], "", "")[1]
