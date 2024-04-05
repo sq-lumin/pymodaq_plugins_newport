@@ -80,7 +80,7 @@ class XPSPythonWrapper():
                 self._plugin.emit_status(ThreadCommand('Update_Status', [f'{APIName} : {errorString}']))
         else:
             if (errorCode == -2):
-                self._plugin.emit_status(ThreadCommand('Update_Status', ['{APIName} : TCP timeout']))
+                self._plugin.emit_status(ThreadCommand('Update_Status', [f'{APIName} : TCP timeout']))
             if (errorCode == -108):
                 self._plugin.emit_status(ThreadCommand('Update_Status', [f'{APIName} : The TCP/IP connection was closed by an administrator']))
         self.closeTCPIP()
