@@ -21,8 +21,9 @@ class XPSPythonWrapper():
         self.socketId = None
         
         #Definition of the stage
-        self.group = group 
-        self.positioner = f'{group}.{positionner}'
+        self._group = group 
+        self._positioner = positionner
+        self._full_positionner_name = f'{group}.{positionner}'
         
         #Some required initialisation steps
         self._initCommands()
@@ -36,12 +37,12 @@ class XPSPythonWrapper():
             print('Connection to XPS failed, check IP & Port')  #TODO : send to logger instead
 
         #Group kill to be sure
-        [errorCode, returnString] = self.myxps.GroupKill(self.socketId, self.group)
+        [errorCode, returnString] = self.myxps.GroupKill(self.socketId, self._group)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupKill')
 
         #Initialize
-        [errorCode, returnString] = self.myxps.GroupInitialize(self.socketId, self.group) 
+        [errorCode, returnString] = self.myxps.GroupInitialize(self.socketId, self._group) 
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupInitialize')
             
@@ -83,7 +84,7 @@ class XPSPythonWrapper():
         
     def getPosition(self):
         """Returns current the position"""
-        [errorCode, currentPosition] = self.myxps.GroupPositionCurrentGet(self.socketId, self.positioner, 1)
+        [errorCode, currentPosition] = self.myxps.GroupPositionCurrentGet(self.socketId, self._full_positionner_name, 1)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupPositionCurrentGet')
             sys.exit()  
@@ -92,19 +93,29 @@ class XPSPythonWrapper():
     
     def moveAbsolute(self, value):
         """Moves the stage to the position value."""
-        [errorCode, returnString] = self.myxps.GroupMoveAbsolute(self.socketId, self.positioner, [value])
+        [errorCode, returnString] = self.myxps.GroupMoveAbsolute(self.socketId, self._full_positionner_name, [value])
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupMoveAbsolute')
             sys.exit()
-
         
     def moveHome(self):
         """Moves the stage to it's home"""
-        [errorCode, returnString] = self.myxps.GroupHomeSearch(self.socketId, self.group)
+        [errorCode, returnString] = self.myxps.GroupHomeSearch(self.socketId, self._group)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupHomeSearch')
             sys.exit() 
-            
+    
+    def setGroup(self, group:str):
+        self._group = group
+        self._full_positionner_name = f'{group}.{self._positionner}'
+    
+    def setPositionner(self, positionner:str):
+        self._positionner = positionner
+        self._full_positionner_name = f'{self._group}.{positionner}'
+        
+    def retryConnection(self):
+        pass
+    
 class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     """ Instrument plugin class for Newport_XPS_Q8 Motion Controller.
     
@@ -168,8 +179,14 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
             A given parameter (within detector_settings) whose value has been changed by the user
         """
         ## TODO for your custom plugin
-        if param.name() == "a_parameter_you've_added_in_self.params":
+        if param.name() == 'xps_ip_address':
            self.controller.your_method_to_apply_this_param_change()
+        elif param.name() == 'xps_port':
+            self.controller.your_method_to_apply_this_param_change()
+        elif param.name() == 'group':
+            self.controller.setGroup(param.value())
+        elif param.name() == 'positionner':
+            self.controller.setPositionner(param.value())
         else:
             pass
 
