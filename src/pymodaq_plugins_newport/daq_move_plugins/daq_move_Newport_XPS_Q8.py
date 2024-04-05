@@ -33,7 +33,7 @@ class XPSPythonWrapper():
             
     def _initCommands(self):
         """Runs some initial commands : connect to the XPS server, group kill, group intialize, move home.
-        Configs"""
+        Some configs could be added here as well"""
         self.socketId = self.myxps.TCP_ConnectToServer(self._ip, self._port, 20)    #20s timeout
         # Check connection passed
         if (self.socketId == -1):
@@ -105,7 +105,14 @@ class XPSPythonWrapper():
             if (errorCode != 0):
                 self.displayErrorAndClose(errorCode, 'GroupMoveAbsolute')
             
-        
+    
+    def moveRelative(self, value):
+        """Moves the stage to value relative to it's current position."""
+        if (self.socketId != -1):
+            [errorCode, returnString] = self.myxps.GroupMoveRelative(self.socketId, self._full_positionner_name, [value])
+            if (errorCode != 0):
+                self.displayErrorAndClose(errorCode, 'GroupMoveRelative')
+                
     def moveHome(self):
         """Moves the stage to it's home"""
         if (self.socketId != -1):
@@ -197,7 +204,6 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         param: Parameter
             A given parameter (within detector_settings) whose value has been changed by the user
         """
-        ## TODO for your custom plugin
         if param.name() == 'xps_ip_address':
             self.controller.setIP(param.value())
             self.controller.retryConnection()
@@ -225,7 +231,7 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         initialized: bool
             False if initialization failed otherwise True
         """
-        print(self.settings.children())
+
         self.controller = self.ini_stage_init(old_controller=controller,
                                               new_controller=XPSPythonWrapper(
                                                   ip = self.settings.child('xps_ip_address').value(),
@@ -265,11 +271,9 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         value = self.check_bound(self.current_position + value) - self.current_position
         self.target_value = value + self.current_position
         value = self.set_position_relative_with_scaling(value)
-
-        ## TODO for your custom plugin
-        raise NotImplemented  # when writing your own plugin remove this line
-        self.controller.your_method_to_set_a_relative_value(value.value())  # when writing your own plugin replace this line
-        self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+ 
+        self.controller.moveRelative(value.value())  
+        self.emit_status(ThreadCommand('Update_Status', ['moveRelative command sent']))
 
     def move_home(self):
         """Call the reference method of the controller"""
