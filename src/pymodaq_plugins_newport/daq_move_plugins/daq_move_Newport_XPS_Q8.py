@@ -285,7 +285,7 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
 
       ## Not possible to implement with this system as far as I'm aware.
       
-      raise NotImplemented  # when writing your own plugin remove this line
+      raise NotImplementedError  # when writing your own plugin remove this line
       self.controller.your_method_to_stop_positioning()  # when writing your own plugin replace this line
       self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
 
