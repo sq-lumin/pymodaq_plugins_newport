@@ -51,3 +51,5 @@ $ python setup.py install
 This last command should be executed in the python environment where you installed pymodaq.
 
 Tested on Windows10 with pymodaq >= 3.3.0.
+
+XPS-Q8 tested on Windows 11 with pymodaq >= 4.1.0.
