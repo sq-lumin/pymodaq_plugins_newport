@@ -20,6 +20,7 @@ Authors
 
 * Sebastien J. Weber
 * David Bresteau (david.bresteau@cea.fr)
+* Sébastien Quistrebert (sebastien.quistrebert@ens-paris-saclay.fr)
 
 Instruments
 ===========
@@ -31,6 +32,7 @@ Actuators
 * **Conex**: Piezo actuators from the CONEX-AGAP series"
 * **Newport_ESP100**: ESP100 motion controllers
 * **AgilisSerial**: for controllers AG-UC8 and AG-UC2 tested with motorized mounts AG-M100N (no encoder)
+* **XPS-Q8**: 8-axis Universal Motion Controller/Driver, ethernet
 
 Installation notes
 ==================
