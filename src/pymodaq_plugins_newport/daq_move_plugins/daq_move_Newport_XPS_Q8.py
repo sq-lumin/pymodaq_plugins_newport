@@ -11,7 +11,7 @@ from time import perf_counter_ns
 class XPSPythonWrapper():
     """Simplified XPS wrapper, calls methods from the wrapper given by Newport. See XPS_Q8_drivers"""
     
-    def __init__(self, ip:str = None, port:str = None, group:str = None, positionner:str = None):
+    def __init__(self, ip:str = None, port:int = None, group:str = None, positionner:str = None):
         #init the wrapper given by Newport and some attributes
         self.myxps = XPS_Q8_drivers.XPS()   #Instanciate the driver from Newport
         
@@ -112,9 +112,20 @@ class XPSPythonWrapper():
     def setPositionner(self, positionner:str):
         self._positionner = positionner
         self._full_positionner_name = f'{self._group}.{positionner}'
+    
+    def setIP(self, IP:str):
+        """Sets a new IP address. Does not automatically try to connect with it, call retryConnection."""
+        self._ip = IP
+    
+    def setPort(self, port:int):
+        """Sets a new port. Does not automatically try to connect with it, call retryConnection."""
+        self._port = port
         
     def retryConnection(self):
-        pass
+        """Closes the connection and runs the init sequence again.
+        Called by the plugin after any change to the IP address or port parameters."""
+        self.closeTCPIP()
+        self._initCommands()
     
 class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     """ Instrument plugin class for Newport_XPS_Q8 Motion Controller.
@@ -146,7 +157,7 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
 
 
     params = [{'title':'XPS IP address :', 'name':'xps_ip_address', 'type' : 'str', 'default' : '192.168.0.254'}, #IP address of my system
-              {'title':'XPS Port :', 'name':'xps_port', 'type' : 'str', 'default' : '5001'}, #Port of my system, should be the same for others ?
+              {'title':'XPS Port :', 'name':'xps_port', 'type' : 'int', 'default' : 5001}, #Port of my system, should be the same for others ?
               {'title':'Group :', 'name':'group', 'type' : 'str', 'default' : 'Group2'},    #Group to be moved
               {'title':'Positionner :', 'name':'positionner', 'type' : 'str', 'default' : 'Pos'}    #positionner to be moved
                 ] + comon_parameters_fun(is_multiaxes, axis_names=_axis_names, epsilon=_epsilon)
@@ -168,7 +179,6 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     def close(self):
         """Terminate the communication protocol"""
         self.controller.closeTCPIP()
-        
 
     def commit_settings(self, param: Parameter):
         """Apply the consequences of a change of value in the detector settings
@@ -180,9 +190,9 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         """
         ## TODO for your custom plugin
         if param.name() == 'xps_ip_address':
-           self.controller.your_method_to_apply_this_param_change()
+           self.controller.setIP(param.value())
         elif param.name() == 'xps_port':
-            self.controller.your_method_to_apply_this_param_change()
+            self.controller.setPort(param.value())
         elif param.name() == 'group':
             self.controller.setGroup(param.value())
         elif param.name() == 'positionner':
@@ -204,9 +214,14 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         initialized: bool
             False if initialization failed otherwise True
         """
-
+        print(self.settings.children())
         self.controller = self.ini_stage_init(old_controller=controller,
-                                              new_controller=XPSPythonWrapper())
+                                              new_controller=XPSPythonWrapper(
+                                                  ip = self.settings.child('xps_ip_address').value(),
+                                                  port = self.settings.child('xps_port').value(),
+                                                  group = self.settings.child('group').value(),
+                                                  positionner = self.settings.child('positionner').value()
+                                                  ))
 
         info = "Platine init"
         initialized = self.controller.checkConnected()
