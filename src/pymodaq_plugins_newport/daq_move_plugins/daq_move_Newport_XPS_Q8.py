@@ -15,7 +15,7 @@ class XPSPythonWrapper():
         #init the wrapper given by Newport and some attributes
         self.myxps = XPS_Q8_drivers.XPS()   #Instanciate the driver from Newport
         
-        #keep a ref of the plugin to emit error messages
+        #keep a ref of the plugin to emit (error) messages
         self._plugin = plugin 
         
         #required to connect via TCP/IP
@@ -37,9 +37,9 @@ class XPSPythonWrapper():
         self.socketId = self.myxps.TCP_ConnectToServer(self._ip, self._port, 20)    #20s timeout
         # Check connection passed
         if (self.socketId == -1):
-            self.emit_status(ThreadCommand('Update_Status', ['Connection to XPS failed, check IP & Port']))
+            self._plugin.emit_status(ThreadCommand('Update_Status', ['Connection to XPS failed, check IP & Port']))
         else:
-            self.emit_status(ThreadCommand('Update_Status', ['Connected to XPS']))
+            self._plugin.emit_status(ThreadCommand('Update_Status', ['Connected to XPS']))
         
             #Group kill to be sure
             [errorCode, returnString] = self.myxps.GroupKill(self.socketId, self._group)
