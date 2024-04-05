@@ -9,31 +9,43 @@ import sys
 from time import perf_counter_ns
 
 class XPSPythonWrapper():
+    """Simplified XPS wrapper, calls methods from the wrapper given by Newport. See XPS_Q8_drivers"""
     
-    def __init__(self):
-        self.myxps = XPS_Q8_drivers.XPS()
-        self.group = 'Group2' 
-        self.positioner = self.group + '.Pos'
+    def __init__(self, ip:str = None, port:str = None, group:str = None, positionner:str = None):
+        #init the wrapper given by Newport and some attributes
+        self.myxps = XPS_Q8_drivers.XPS()   #Instanciate the driver from Newport
+        
+        #required to connect via TCP/IP
+        self._ip = ip
+        self._port = port
         self.socketId = None
+        
+        #Definition of the stage
+        self.group = group 
+        self.positioner = f'{group}.{positionner}'
+        
+        #Some required initialisation steps
         self._initCommands()
             
     def _initCommands(self):
-        self.socketId = self.myxps.TCP_ConnectToServer('192.168.0.254', 5001, 20)
+        """Runs some initial commands : connect to the XPS server, group kill, group intialize, move home.
+        Configs"""
+        self.socketId = self.myxps.TCP_ConnectToServer(self._ip, self._port, 20)    #20s timeout
         # Check connection passed
         if (self.socketId == -1):
-            print('Connection to XPS failed, check IP & Port')
-            #sys.exit()
+            print('Connection to XPS failed, check IP & Port')  #TODO : send to logger instead
+
         #Group kill to be sure
         [errorCode, returnString] = self.myxps.GroupKill(self.socketId, self.group)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupKill')
-            #sys.exit ()
+
         #Initialize
         [errorCode, returnString] = self.myxps.GroupInitialize(self.socketId, self.group) 
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupInitialize')
-            #sys.exit()
-        #Définition du trigger sur MotionDone
+            
+        #Definition of the MotionDone trigger
         # [errorCode, returnString] = self.myxps.EventExtendedConfigurationTriggerSet(self.socketId, 'MotionDone',0,0,0,0)
         # if (errorCode != 0):
         #     self.displayErrorAndClose(errorCode, 'EventExtendedConfigurationTriggerSet')
@@ -42,77 +54,63 @@ class XPSPythonWrapper():
         # if (errorCode != 0):
         #     self.displayErrorAndClose(errorCode, 'EventExtendedConfigurationActionSet')
         #     sys.exit()
+        
         # Home search
         self.moveHome()
             
     def checkConnected(self):
+        """Checks if the connection was initialized properly."""
         return (self.socketId != -1) and (self.socketId is not None)
     
     def displayErrorAndClose(self, errorCode, APIName):
+        """Method to recover an error string based on an error code. Closes the TCPIP connection afterwards"""
         if (errorCode != -2) and (errorCode != -108):
             [errorCode2, errorString] = self.myxps.ErrorStringGet(self.socketId, errorCode)
             if (errorCode2 != 0):
-                print(APIName + ': ERROR ' + str(errorCode))
+                print(APIName + ': ERROR ' + str(errorCode))    #TODO : send to logger instead
             else:
-                print(APIName + ': ' + errorString)
+                print(APIName + ': ' + errorString)     #TODO : send to logger instead
         else:
             if (errorCode == -2):
-                print(APIName + ': TCP timeout')
+                print(APIName + ': TCP timeout')        #TODO : send to logger instead
             if (errorCode == -108):
-                print(APIName + ': The TCP/IP connection was closed by an administrator')
+                print(APIName + ': The TCP/IP connection was closed by an administrator')       #TODO : send to logger instead
         self.closeTCPIP()
 
     def closeTCPIP(self):
+        """Call the method to close the socket."""
         self.myxps.TCP_CloseSocket(self.socketId)
         
     def getPosition(self):
+        """Returns current the position"""
         [errorCode, currentPosition] = self.myxps.GroupPositionCurrentGet(self.socketId, self.positioner, 1)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupPositionCurrentGet')
             sys.exit()  
         else:
             return(float(currentPosition))
-            #print('Positioner ' + self.positioner + ' is in position ' + str(currentPosition))
     
     def moveAbsolute(self, value):
+        """Moves the stage to the position value."""
         [errorCode, returnString] = self.myxps.GroupMoveAbsolute(self.socketId, self.positioner, [value])
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupMoveAbsolute')
             sys.exit()
-        #test : attente de finir le mouvement
-        # [errorCode, returnString] = self.myxps.GroupMotionStatusGet(self.socketId, self.positioner, 1)
-        # print(returnString)
-        # if (errorCode != 0):
-        #     self.displayErrorAndClose(errorCode, 'GroupMotionStatusGet')
-        #     sys.exit()
-        # t1 = perf_counter_ns()
-        # while returnString == '1':
-        #     [errorCode, returnString] = self.myxps.GroupMotionStatusGet(self.socketId, self.positioner, 1)
-        #     print('looping')
-        #     if (errorCode != 0):
-        #         self.displayErrorAndClose(errorCode, 'GroupMotionStatusGet')
-        #         sys.exit()
-        # t2 = perf_counter_ns()
 
         
     def moveHome(self):
+        """Moves the stage to it's home"""
         [errorCode, returnString] = self.myxps.GroupHomeSearch(self.socketId, self.group)
         if (errorCode != 0):
             self.displayErrorAndClose(errorCode, 'GroupHomeSearch')
             sys.exit() 
             
-# TODO:
-# (1) change the name of the following class to DAQ_Move_TheNameOfYourChoice
-# (2) change the name of this file to daq_move_TheNameOfYourChoice ("TheNameOfYourChoice" should be the SAME
-#     for the class name and the file name.)
-# (3) this file should then be put into the right folder, namely IN THE FOLDER OF THE PLUGIN YOU ARE DEVELOPING:
-#     pymodaq_plugins_my_plugin/daq_move_plugins
 class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
-    """ Instrument plugin class for an actuator.
+    """ Instrument plugin class for Newport_XPS_Q8 Motion Controller.
     
     This object inherits all functionalities to communicate with PyMoDAQ’s DAQ_Move module through inheritance via
     DAQ_Move_base. It makes a bridge between the DAQ_Move module and the Python wrapper of a particular instrument.
-
+    
     TODO Complete the docstring of your plugin with:
         * The set of controllers and actuators that should be compatible with this instrument plugin.
         * With which instrument and controller it has been tested.
@@ -129,23 +127,21 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     # TODO add your particular attributes here if any
 
     """
-    _controller_units = 'mm'  # TODO for your plugin: put the correct unit here
-    is_multiaxes = False  # TODO for your plugin set to True if this plugin is controlled for a multiaxis controller
-    _axis_names = ['Axis1']  # TODO for your plugin: complete the list
-    _epsilon = 600e-6  # TODO replace this by a value that is correct depending on your controller
-    data_actuator_type = DataActuatorType['DataActuator']  # wether you use the new data style for actuator otherwise set this
-    # as  DataActuatorType['float']  (or entirely remove the line)
+    _controller_units = 'mm'  
+    is_multiaxes = False  
+    _axis_names = ['Axis1'] 
+    _epsilon = 600e-6  
+    data_actuator_type = DataActuatorType['DataActuator']  
 
-    params = [   # TODO for your custom plugin: elements to be added here as dicts in order to control your custom stage
+
+    params = [{'title':'XPS IP address :', 'name':'xps_ip_address', 'type' : 'str', 'default' : '192.168.0.254'}, #IP address of my system
+              {'title':'XPS Port :', 'name':'xps_port', 'type' : 'str', 'default' : '5001'}, #Port of my system, should be the same for others ?
+              {'title':'Group :', 'name':'group', 'type' : 'str', 'default' : 'Group2'},    #Group to be moved
+              {'title':'Positionner :', 'name':'positionner', 'type' : 'str', 'default' : 'Pos'}    #positionner to be moved
                 ] + comon_parameters_fun(is_multiaxes, axis_names=_axis_names, epsilon=_epsilon)
-    # _epsilon is the initial default value for the epsilon parameter allowing pymodaq to know if the controller reached
-    # the target value. It is the developer responsibility to put here a meaningful value
 
     def ini_attributes(self):
         self.controller: XPSPythonWrapper = None
-
-        #TODO declare here attributes you want/need to init with a default value
-        pass
 
     def get_actuator_value(self):
         """Get the current value from the hardware with scaling conversion.
@@ -209,9 +205,9 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
         value = self.check_bound(value)  #if user checked bounds, the defined bounds are applied here
         self.target_value = value
         value = self.set_position_with_scaling(value)  # apply scaling if the user specified one
-        ## TODO for your custom plugin
-        self.controller.moveAbsolute(value.value())  # when writing your own plugin replace this line
-        #self.controller.moveAbsolute(value.value())  # do it twice to be sure
+
+        self.controller.moveAbsolute(value.value())  
+
         self.emit_status(ThreadCommand('Update_Status', ['moveAbsolute command sent']))
 
         
@@ -234,12 +230,13 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     def move_home(self):
         """Call the reference method of the controller"""
         self.controller.moveHome()  # when writing your own plugin replace this line
-        self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+        self.emit_status(ThreadCommand('Update_Status', ['Moved home']))
 
     def stop_motion(self):
-      """Stop the actuator and emits move_done signal"""
+      """NOT IMPLEMENTED --- Stop the actuator and emits move_done signal"""
 
-      ## TODO for your custom plugin
+      ## Not possible to implement with this system as far as I'm aware.
+      
       raise NotImplemented  # when writing your own plugin remove this line
       self.controller.your_method_to_stop_positioning()  # when writing your own plugin replace this line
       self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
