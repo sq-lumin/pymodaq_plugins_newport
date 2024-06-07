@@ -172,10 +172,10 @@ class DAQ_Move_Newport_XPS_Q8(DAQ_Move_base):
     data_actuator_type = DataActuatorType['DataActuator']  
 
 
-    params = [{'title':'XPS IP address :', 'name':'xps_ip_address', 'type' : 'str', 'default' : '192.168.0.254'}, #IP address of my system
-              {'title':'XPS Port :', 'name':'xps_port', 'type' : 'int', 'default' : 5001}, #Port of my system, should be the same for others ?
-              {'title':'Group :', 'name':'group', 'type' : 'str', 'default' : 'Group2'},    #Group to be moved
-              {'title':'Positionner :', 'name':'positionner', 'type' : 'str', 'default' : 'Pos'}    #positionner to be moved
+    params = [{'title':'XPS IP address :', 'name':'xps_ip_address', 'type' : 'str', 'value' : '192.168.0.254'}, #IP address of my system
+              {'title':'XPS Port :', 'name':'xps_port', 'type' : 'int', 'value' : 5001}, #Port of my system, should be the same for others ?
+              {'title':'Group :', 'name':'group', 'type' : 'str', 'value' : 'Group2'},    #Group to be moved
+              {'title':'Positionner :', 'name':'positionner', 'type' : 'str', 'value' : 'Pos'}    #positionner to be moved
                 ] + comon_parameters_fun(is_multiaxes, axis_names=_axis_names, epsilon=_epsilon)
 
     def ini_attributes(self):
